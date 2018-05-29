@@ -2,9 +2,11 @@
 
 LR: pc
 Recieves: 
-	CurrentPlayer (in stack)
-	orignialPlayer (in stack)
-
+	CurrentPlayer (in stack by value)
+	orignialPlayer (in stack by address)
+output:
+	1 or -1 (in register r4 by value)
+	
 1	if both players are same color, return 1
 2	else return -1
 
@@ -14,13 +16,16 @@ Recieves:
 
 LR: r5
 recieves:
-	srcPos (inline)
-	dstPos (inline)
-	boardPos (in stack)
-
+	srcPos (inline by value)
+	dstPos (inline by value)
+	boardPos (in stack by address)
+output:
+	changes the board sent by address
+	
 1	set dstPos's content to srcPos's content
 2	set srcPos's content to zero 
-//then save changes somehow?
+//then save changes somehow?					//note by uriya - may want to recursively call the envelope function
+								//and then undo the movPiece manually the way you do backtracking
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -28,12 +33,14 @@ recieves:
 
 LR: pc 
 Recieves:
-	srcPtr (in stack)
-	dstPtr (in stack)
-	Board (common area)
-	Player (common area)
-	Steps (common area)
-
+	WP (in stack by address)
+	srcPtr (in stack by address)
+	dstPtr (in stack by address)
+	Board (common area by address)
+	Player (common area by address)
+	Steps (common area by address)
+output:
+	changes values in WP, srcPtr, dstPtr by address
 
 -13	if checkWin == -1, do no-more-steps check (->)
 -12	WP = 20
