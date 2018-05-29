@@ -1,0 +1,63 @@
+~minOrMax~
+
+LR: pc
+Recieves: 
+	CurrentPlayer (in stack)
+	orignialPlayer (in stack)
+
+1	if both players are same color, return 1
+2	else return -1
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+~movPiece~
+
+LR: r5
+recieves:
+	srcPos (inline)
+	dstPos (inline)
+	boardPos (in stack)
+
+1	set dstPos's content to srcPos's content
+2	set srcPos's content to zero 
+//then save changes somehow?
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+~getMaxWP~
+
+LR: pc 
+Recieves:
+	srcPtr (in stack)
+	dstPtr (in stack)
+	Board (common area)
+	Player (common area)
+	Steps (common area)
+
+
+-13	if checkWin == -1, do no-more-steps check (->)
+-12	WP = 20
+-11	return
+
+//no-more-steps check:
+-10	if "Steps" euqals 1 or more, do the board check (->)
+-9	WP = calcWP
+-8	return
+
+//the board check:
+1	if Player is white, check for white (->)
+
+//check for black:
+2	for every tile from first line to next-to-last line:
+3	if tile doesn't have black piece, look at next tile (next iteration) (->)
+
+//left move check:
+4	if on left border, look at next tile do right move check (->)
+5	if left jump tile has black piece, do right move check (->)
+6	if left jump tile is empty, move piece (movPiece),     	 
+
+
+
+	
+
+	
