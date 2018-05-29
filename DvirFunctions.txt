@@ -1,6 +1,6 @@
 ~minOrMax~
 
-LR: pc
+Linking Register: pc
 Recieves: 
 	CurrentPlayer (in stack)
 	orignialPlayer (in stack)
@@ -23,7 +23,7 @@ recieves:
 //then save changes somehow?
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+DIDN'T TAKE CARE OF NO-MOVES SCENARIO YET
 ~getMaxWP~
 
 LR: pc 
@@ -34,27 +34,139 @@ Recieves:
 	Player (common area)
 	Steps (common area)
 
+code:	
+//taking care of extreme scenarios:
+	if (checkWin(Player) == 1) //should it be white/black, or player/adversary?
+	|	return 20;
+	if(checkWin(Adversary) == 1)
+	|	return -20;
+	if (steps = 0)
+	|	return calcWP;
+	
+	WP = lowest_number_ever;
+	int branchWP;
+	for (every single tile)
+	|	if (tile doesn't have Player-color piece)
+	|	|	check next tile (->next iteration of the for loop)
+//left move:
+	|	if (left move is not legal (not even as a leap))
+	|	|	check right move (->)
+	|	move piece left (->movPiece)
+	|	branchWP = minAux(Board, Player, steps-1)
+	|	undo move (*SOMEHOW*) 				//maybe have a function for every possible move per piece (so 8 altogether)?
+	|	if (branchWP > WP)
+	|	|	WP = branchWP;				//mov max, branchWP (in this order)?
+	|	|	srcPtr = current_tile;
+	|	|	dstPtr = current_move's_tile;
+//right move:
+	|	if (right move is not legal (not even as a leap))
+	|	|	check next tile (->next iteration of the for loop)
+	|	move piece right (->movPiece)
+	|	branchWP = minAux(Board, Player, steps-1)
+	|	undo move
+		//WE SHOULD'T NEED TO REPEAT THE CODE LIKE THIS, HAVE IT BRANCH SOMEHOW:
+		if (branchWP > max)
+	|	|	WP = branchWP;				
+	|	|	srcPtr = current_tile;
+	|	|	dstPtr = current_move's_tile;
+	
+	//WP, srcPtr and dstPtr have the values we want at this point (so no need to "return" them..?)
 
--13	if checkWin == -1, do no-more-steps check (->)
--12	WP = 20
--11	return
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-//no-more-steps check:
--10	if "Steps" euqals 1 or more, do the board check (->)
--9	WP = calcWP
--8	return
+~minAux~
 
-//the board check:
-1	if Player is white, check for white (->)
+LR: pc 
+Recieves:
+	Board (common area)
+	Player (common area)
+	Steps (common area)
 
-//check for black:
-2	for every tile from first line to next-to-last line:
-3	if tile doesn't have black piece, look at next tile (next iteration) (->)
+code:	
+//recursion stop conditions:
+	if (checkWin(Player) == 1)
+	|	return 20;
+	if(checkWin(Adversary) == 1)
+	|	return -20;
+	if (steps = 0)
+	|	return calcWP;
+	
+	int WP = highest_number_ever;
+	int branchWP;
+	for (every single tile)
+	|	if (tile doesn't have adversasry-color piece)
+	|	|	check next tile (->next iteration of the for loop)
+//left move:
+	|	if (left move is not legal (not even as a leap))
+	|	|	check right move (->)
+	|	move piece left (->movPiece)
+	|	branchWP = maxAux(Board, Player, steps-1)
+	|	undo move;			
+	|	if (branchWP < min)
+	|	|	min = branchWP;				
+//right move:
+	|	if (right move is not legal (not even as a leap))
+	|	|	check next tile (->next iteration of the for loop)
+	|	move piece right (->movPiece)
+	|	branchWP = maxAux(Board, Player, steps-1)
+	|	undo move
+		//WE SHOULD'T NEED TO REPEAT THE CODE LIKE THIS, HAVE IT BRANCH SOMEHOW:
+		if (branchWP < min)
+	|	|	min = branchWP				
+	return min
+		
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-//left move check:
-4	if on left border, look at next tile do right move check (->)
-5	if left jump tile has black piece, do right move check (->)
-6	if left jump tile is empty, move piece (movPiece),     	 
+~maxAux~
+
+LR: pc 
+Recieves:
+	Board (common area)
+	Player (common area)
+	Steps (common area)
+
+code:	
+//recursion stop conditions:
+	if (checkWin(Player) == 1)
+	|	return 20;
+	if(checkWin(Adversary) == 1)
+	|	return -20;
+	if (steps = 0)
+	|	return calcWP;
+	
+	int max = lowest_number_ever;
+	int branchWP;
+	for (every single tile)
+	|	if (tile doesn't have Player-color piece)
+	|	|	check next tile (->next iteration of the for loop)
+//left move:
+	|	if (left move is not legal (not even as a leap))
+	|	|	check right move (->)
+	|	move piece left (->movPiece);
+	|	branchWP = minAux(Board, Player, steps-1);
+	|	undo move			
+	|	if (branchWP > max)
+	|	|	max = branchWP;				
+//right move:
+	|	if (right move is not legal (not even as a leap))
+	|	|	check next tile (->next iteration of the for loop)
+	|	move piece right (->movPiece);
+	|	branchWP = minAux(Board, Player, steps-1);
+	|	undo move;
+		//WE SHOULD'T NEED TO REPEAT THE CODE LIKE THIS, HAVE IT BRANCH SOMEHOW:
+		if (branchWP > max)
+	|	|	max = branchWP;				
+	return max
+		
+		
+		
+		
+		
+
+		
+		
+		
+
 
 
 
