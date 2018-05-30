@@ -1,0 +1,354 @@
+black = 2
+white = 1
+skipC = 16
+skipF = 22
+empty = 0
+edgeR = 16
+edgeL = 0
+	
+	
+	
+.= torg + 2000
+	
+main: 		mov pc, sp
+			tst -(sp)
+			tst -(sp)
+			mov #Board, -(sp)
+			mov Player, -(sp)
+			jsr pc, checkWin
+			mov 4(sp), NumMoves
+			halt
+			
+	
+	
+.= torg + 3000
+cntMoves:	mov r0, -(sp)				;preserving r0, now used as an index for game tiles
+			mov 6(sp), r0
+			mov r0, BoardB
+			mov r0, BoardE
+			mov r0, BordLRo
+			add #176, BoardE
+			add #160, BordLRo
+			mov r1, -(sp)				;preserving r1, now used to count the possible moves
+			clr r1
+			mov r2, -(sp)				;preserving r2, now used for calculations
+			mov r3, -(sp)				;preserving r3, now used for calculations
+			mov r4, -(sp)				;preserving r4, now used to hold player's turn
+			mov 14(sp) , r4
+			
+			
+			add #156, r0				;starts to go throught indexes from the end to beginning
+			cmp #black, r4			
+			beq loopB
+			sub #136, r0				;starts at the second last row, because there is no use checking for the last row
+			br loopW					;checks whose turn it is
+			
+		;a loop for counting possible moves in case player is black
+			
+loopB:		cmp (r0), #black
+			bne nextB					;if not black, proceed to nextB tile
+			
+	;Black left border check:			
+
+			mov r0, r3					;for r2r3 we check if r3(mod 20) == 0, which means we're at the left border
+			sxt r2					
+			div #20, r2
+			cmp r3, #edgeL					;if on left border - 
+			beq tileRB					; - proceed to check right move tile (skip the right border check)			
+			
+	;B left occupation check:
+		
+			mov r0, r3
+			add #skipC, r3
+			cmp (r3), #white
+			bgt borderRB 				;if left move tile has black, proceed to check right border
+			beq leapLB					;if left move tile has white, proceed to check left leap
+			inc r1						;else increase numOfSteps by 1
+			br borderRB					;proceed to check the right border 
+
+		;checks if player can leap (eat) the playpiece on its left
+			
+leapLB:		cmp r3, BordLRo				;if white is at last row -
+			bge borderRB				; - proceed to check right border
+			tst r3
+			sxt r2	
+			div #20, r2
+			cmp r3, #edgeL				;if white is at left border - 
+			beq borderRB				; - proceed to check right border
+			mov r0, r3					
+			add #skipC, r3
+			add #skipC, r3	
+			cmp (r3), #empty		;if left leap tile is occupied - 
+			bne borderRB				; - proceed to check right border
+			inc r1						;else increase numOfSteps by 1
+			br borderRB					;proceed to check the right border
+			
+	;Black right border check:
+		
+borderRB:	mov r0, r3
+			sxt r2
+			div #20, r2
+			cmp r3, #edgeR				;if on right border - 
+			beq nextB					;proceed to nextB tile
+			
+		;the label signifies a situation where we want to check if black player can proceed to the right diagonal, when we know he is not on the right border
+			
+tileRB:		mov r0, r3
+			add #skipF, r3
+			cmp (r3), #white			
+			bgt nextB					;if right move tile has black, proceed to nextB tile
+			beq leapRB					;if right move tile has white, proceed to check right leap 
+			inc r1						;else increase numOfSteps by 1
+			br nextB					; proceed to nextB tile
+			
+		;checks if player can leap (eat) the playpiece on its right
+			
+leapRB:		cmp r3, BordLRo				;if white is at last row - 			
+			bge nextB					; - proceed to nextB tile
+			tst r3
+			sxt r2
+			div #20, r2
+			cmp r3, #edgeR				;if white is at right border - 
+			beq nextB					;proceed to nextB tile
+			mov r0, r3
+			add #skipF, r3					
+			add #skipF, r3					
+			cmp (r3), #empty			;if right leap tile is occupied - 
+			bne nextB					; - proceed to nextB tile
+			inc r1						;else increase numOfSteps by 1
+			;(br nextB - already nextB)   ;proceed to nextB tile
+			
+		;check the next index
+			
+nextB:		sub #2, r0					;going from end to start, each tile a word (so *2* bytes)
+			cmp r0, BoardB
+			bge loopB
+			mov r1, 20(sp)
+
+		;unfold routine and empty the stack
+		
+			mov (sp)+, r4
+			mov (sp)+, r3
+			mov (sp)+, r2
+			mov (sp)+, r1
+			mov (sp)+, r0
+			
+			rts pc
+
+		;a loop for counting possible moves in case player is white			
+			
+loopW:		cmp (r0), r4		;checks wether current tile has a white playpiece
+			bne nextW					;if not checks next tile
+			
+			mov r0, r3					;
+			sxt r2						;
+			div #20, r2					;finds the reminders of the index, each even reminder between 0 - 20 (excluding) indicates a different horizontal location
+			
+			cmp r3, #edgeL
+			beq tileRW					;if it's right by the left ledge, move is illegal, there's no need to check if next to right ledge, since it is 
+										;obviously by the left ledge.
+			
+			mov r0, r3					;
+			sub #skipF, r3				;
+			
+			cmp (r3), #white				;if space has a white playpiece, it cannot jump there
+			beq borderRW
+			cmp (r3), #black				;if space has a black playpiece try and initiate eat
+			beq leapLW					
+			inc r1						;otherwise space is empty so a move is possible
+			br borderRW
+	
+		;checks if player can leap (eat) the playpiece on its left
+	
+leapLW:		tst r3
+			sxt r2						
+			div #20, r2					;finds the reminders of the index, to determine if close to the left
+			
+			cmp r3, #edgeL
+			beq borderRW					;if it's right by the left ledge, move is illegal
+
+			mov r0,r3					;otherwise, check if close to ledge has destroyed r2, we have to recreate the checked index and find now the third 
+			sub #skipF, r3				;diagonal tile away from checked tile
+			sub #skipF, r3				;
+			cmp r3, BoardB
+			blt borderRW				;if index is negative that must mean eating would get the piece out of bounds.
+			
+			cmp (r3), #empty		;if space is empty count as eat
+			bne borderRW
+			inc r1						;eating is possible. now to check a move to the right
+			
+		;checks if playpiece is on the right border (check if can jump to the right)
+		
+borderRW:	mov r0, r3					;
+			sxt r2						;
+			div #20, r2					;finds the reminders of the index, each even reminder between 0 - 20 (excluding) indicates a different horizontal location
+						
+			cmp r3, #edgeR
+			beq nextW					;if it's right by the right ledge, move is illegal, check the next tile
+			
+		;the label signifies a situation where we want to check if black player can proceed to the right diagonal, when we know he is not on the right border
+			
+			
+tileRW:		mov r0, r3					;
+			sub #skipC, r3				;
+			cmp (r3), #white		;if space has a white playpiece, it cannot jump there
+			beq nextW
+			cmp (r3), #black		;if space has a black playpiece try and initiate eat
+			beq leapRW
+			inc r1						;otherwise space is empty so a move is possible
+			br nextW
+	
+		;checks if player can leap (eat) the playpiece on its left
+	
+leapRW:		tst r3
+			sxt r2						
+			div #20, r2					;finds the reminders of the index, to determine if close to the right
+			
+			cmp r3, #edgeR
+			beq nextW					;if it's right by the right ledge, move is illegal
+			
+			mov r0,r3					;otherwise, check if close to ledge has destroyed r2, we have to recreate the checked index and find now the third 
+			sub #skipC, r3				;diagonal tile away from checked tile
+			sub #skipC, r3				;
+			cmp r3, BoardB				;
+			blt nextW					;if index is negative, that must mean eating would get the piece out of bounds.
+			
+			cmp (r3), #empty		;if space is empty count as eat
+			bne nextW
+			inc r1						;eating is possible. now to check the nextW tile
+			
+			br nextW						;checkes nextW tile
+
+		;check next tile index
+			
+nextW:		add #2, r0					;check nextW tile
+			cmp r0, BoardE				;if index is 176 board has been scanned top to bottom -> halt
+			ble loopW
+			mov r1, 20(sp)
+		
+		;unfold routine and empty the stack
+
+		mov (sp)+, r4
+		mov (sp)+, r3
+		mov (sp)+, r2
+		mov (sp)+, r1
+		mov (sp)+, r0
+		
+		rts pc
+		
+BoardB:		.blkw 1						;gonna hold the addresses of the end of the game board and beginning
+BoardE:		.blkw 1						;
+BordLRo:	.blkw 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		
+
+	;checks if player has any playpieces on board, if not that is not a winning situation
+
+checkWin:	mov r0, -(sp)		;preservation of registers
+								
+								;we pass parameters for the next function
+			tst -(sp)		
+			mov 8(sp), -(sp)	;pass board address for the count play pieces routine
+			mov 8(sp), -(sp)	;pass player parameter for the count play pieces routine
+			jsr pc, cntPlay
+			mov 4(sp), playCnt
+			bne countP2			;if playCnt is 0 we know for sure hasn't won
+			br PLYnoWIN
+
+	;checks if opponnent has any playpieces on board, if not player has won
+			
+countP2:	mov #3,r0			;gonna sub 3 from player num to get the next player
+			sub 12(sp),r0
+			mov r0, (sp)		;pass other player num into stack
+			jsr pc, cntPlay		
+			mov 4(sp), oppCnt
+			bne movesP1		;if opponnent play piece count is 0, player has won
+			br playWin
+
+	;checks if player has any moves to make.
+			
+movesP1:	mov 12(sp), (sp)	;moves player num to send for the check moves routine
+			jsr pc, cntMoves
+			
+			tst 4(sp)				;check if has more than 0 moves for player
+			beq movesP2
+			br PLYnoWIN
+
+	;checks if opponnent has any moves to make. if both players can't move count difference between playpiece number
+	
+movesP2:	mov r0, (sp)		;moves opponnent num to send for the check moves routine 
+			jsr pc, cntMoves
+			tst 4(sp)			;check if has more than 0 moves for opponnent
+			beq findDiff
+			br PLYnoWIN
+			
+	;finds who wins by checking who has more pieces on board		
+			
+findDiff:	cmp playCnt, oppCnt	;if no moves left and player has more piece announce win
+			bgt playWin
+			br PLYnoWIN
+			
+	;unwraps routines and empties stack, win flag is up
+			
+playWin:	add sp, 6
+			mov (sp)+, r0
+			mov #1, 6(sp)
+	;unwraps routines and empties stack, nowin known flag is up
+			rts pc
+PLYnoWIN:	add sp, 6
+			mov (sp)+, r0
+			mov #-1, 6(sp)
+			rts pc
+
+playCnt:	.blkw 1
+oppCnt:		.blkw 1
+
+
+	;counts playe pieces for current player
+	
+cntPlay:	mov r0, -(sp)			;preserve r0, now used to hold the player's num
+			mov 4(sp), r0
+			mov r1, -(sp)			;preserve r1, now used to hold the address of board's tiles
+			mov 10(sp), r1	
+			mov r1, BoardB
+			mov r2, -(sp)
+			clr r2					;preserve r2, now used to count playpieces
+			
+			add #200, r1
+			
+			
+loop:		dec r1
+			dec r1
+			cmp r1, BoardB
+			ble exit
+			
+			cmp (r1), r0
+			bne loop
+			
+			inc r2
+			br loop
+			
+exit:		mov r2, 14(sp)
+			mov (sp)+, r2
+			mov (sp)+, r1
+			mov (sp)+, r0
+			rts pc
+
+
+
