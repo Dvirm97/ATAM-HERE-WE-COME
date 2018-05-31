@@ -8,7 +8,7 @@ main:		mov pc, sp	;init stack
 			
 			mov 2, -(sp)
 			mov 24, -(sp)
-			jsr pc, getMapWP
+			jsr pc, getMaxWP
 			
 			halt
 			
@@ -30,7 +30,7 @@ getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r4
 			mov 4(sp), r1				;dstPos
 			tst -(sp)					;getting ready for checkWin	| STACK: srcPos, dstPos, pc, -		
 			mov #Board, -(sp)			;getting ready for checkWin	| STACK: srcPos, dstPos, pc, -, #Board
-			mov Player -(sp)			;getting ready for checkWIn	| STACK: srcPos, dstPos, pc, -, #Board, Player
+			mov Player, -(sp)			;getting ready for checkWIn	| STACK: srcPos, dstPos, pc, -, #Board, Player
 			jsr pc, checkWin			;							| STACK: srcPos, dstPos, pc, *result*, #Board, Player 
 			cmp 4(sp), 1				;if Player haven't won yet
 			bne doNext1					;then continue
@@ -56,7 +56,7 @@ getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r4
 				tst (sp)+					;							| STACK: srcPos, dstPos, pc
 				rts pc
 			
-		doNext2:
+		doNext2:						;							| STACK: srcPos, dstPos, pc, *result2*, #Board, *Adversary*
 			cmp Steps, 0				;
 			bne doNext3					;
 			;releasing everything and returning:
@@ -68,7 +68,7 @@ getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r4
 				tst (sp)+					;							| STACK: srcPos, dstPos, pc
 				rts pc
 			
-		doNext3:
+		doNext3:						;							| STACK: srcPos, dstPos, pc, *result2*, #Board, *Adversary*
 			tst -(sp)					;							| STACK: srcPos, dstPos, pc, *result2*, #Board
 			jsr pc, canMove				;							| STACK: srcPos, dstPos, pc, *result3*, #Board
 			cmp 2(sp), 1
