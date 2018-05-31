@@ -1,3 +1,6 @@
+NEXT TASK: FINISH STEPS==0 CHECK!
+
+
 ~minOrMax~
 
 Linking Register: pc
@@ -23,8 +26,8 @@ recieves:
 //then save changes somehow?
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-DIDN'T TAKE CARE OF NO-MOVES SCENARIO YET
 ~getMaxWP~
+
 
 LR: pc 
 Recieves:
@@ -42,7 +45,9 @@ code:
 	|	return -20;
 	if (steps = 0)
 	|	return calcWP;
-	
+	if (both players can't move)
+		return 0;	
+
 	WP = lowest_number_ever;
 	int branchWP;
 	for (every single tile)
@@ -69,7 +74,6 @@ code:
 	|	|	WP = branchWP;				
 	|	|	srcPtr = current_tile;
 	|	|	dstPtr = current_move's_tile;
-	
 	//WP, srcPtr and dstPtr have the values we want at this point (so no need to "return" them..?)
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
