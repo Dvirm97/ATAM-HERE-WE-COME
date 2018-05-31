@@ -1,0 +1,191 @@
+. = torg + 1000	
+main:		mov pc, sp	;init stack
+			tst -(sp) 	;init stack
+			mov #Board, -(sp)
+			jsr r5, movPiece
+			.word 2, 24 
+			tst (sp)+ ;empty stack
+			
+			mov 2, -(sp)
+			mov 24, -(sp)
+			jsr pc, getMapWP
+			
+			halt
+			
+movPiece:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK!
+			mov 2(sp), r0				;asign boardPos to r0
+			mov (r5)+, r1				;assign srcPos to r1
+			mov (r5)+, r2				;assign dstPos to r2
+			add r0, r1					;add boardPos to srcPos in order to get the actual adress
+			add r0, r2					;add boardPos to srcPos in order to get the actual adress 
+			mov (r1), r3				;A CHECK - REMOVE
+			mov (r1), (r2)				;assign srcPos to dstPos
+			mov 0, (r1)					;assign 0 to srcPos
+			mov (r1), r3				;A CHECK - REMOVE
+			rts r5
+			
+getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r4
+										;							| STACK: srcPos, dstPos, pc
+			mov 2(sp), r0				;srcPos 
+			mov 4(sp), r1				;dstPos
+			tst -(sp)					;getting ready for checkWin	| STACK: srcPos, dstPos, pc, -		
+			mov #Board, -(sp)			;getting ready for checkWin	| STACK: srcPos, dstPos, pc, -, #Board
+			mov Player -(sp)			;getting ready for checkWIn	| STACK: srcPos, dstPos, pc, -, #Board, Player
+			jsr pc, checkWin			;							| STACK: srcPos, dstPos, pc, *result*, #Board, Player 
+			cmp 4(sp), 1				;if Player haven't won yet
+			bne doNext1					;then continue
+			;releasing everything and returning:
+				mov #20, WinParam			;return 20 WP
+				tst (sp)+					;							| STACK: srcPos, dstPos, pc, *result*, #Board
+				tst (sp)+					;							| STACK: srcPos, dstPos, pc, *result*
+				tst (sp)+					;							| STACK: srcPos, dstPos, pc
+				rts pc
+			
+		doNext1:						;							| STACK: srcPos, dstPos, pc, *result*, #Board, Player
+			mov (sp), r2
+			neg r2						;turning player to adversary (1 to 2 and 2 to 1)
+			add #3, r2					;turning player to adversary (1 to 2 and 2 to 1)
+			mov r2, (sp)				;							| STACK: srcPos, dstPos, pc, *result*, #Board, *Adversary*
+			jsr pc, checkWin			;							| STACK: srcPos, dstPos, pc, *result2*, #Board, *Adversary*
+			cmp 4(sp), 1
+			bne doNext2
+			;releasing everything and returning:
+				mov #-20, WinParam			;return -20 WP
+				tst (sp)+					;							| STACK: srcPos, dstPos, pc, *result2*, #Board
+				tst (sp)+					;							| STACK: srcPos, dstPos, pc, *result2*
+				tst (sp)+					;							| STACK: srcPos, dstPos, pc
+				rts pc
+			
+		doNext2:
+			cmp Steps, 0				;
+			bne doNext3					;
+			;releasing everything and returning:
+				mov Player, (sp)			;							| STACK: srcPos, dstPos, pc, *result2*, #Board, Player
+				jsr pc, calcWP				;calcWP; puts result in r4
+				mov r4, WinParam			;return calcWP
+				tst (sp)+					;							| STACK: srcPos, dstPos, pc, *result2*, #Board
+				tst (sp)+					;							| STACK: srcPos, dstPos, pc, *result2*
+				tst (sp)+					;							| STACK: srcPos, dstPos, pc
+				rts pc
+			
+		doNext3:
+			tst -(sp)					;							| STACK: srcPos, dstPos, pc, *result2*, #Board
+			jsr pc, canMove				;							| STACK: srcPos, dstPos, pc, *result3*, #Board
+			cmp 2(sp), 1
+			bne doNext4
+			;releasing everything and returning:
+				mov 0, WinParam
+				tst (sp)+					;							| STACK: srcPos, dstPos, pc, *result3*
+				tst (sp)+					;							| STACK: srcPos, dstPos, pc
+				rts pc
+				
+		doNext4:
+			;~doing fun things~
+			rts pc
+			
+			
+			
+;ALL KINDS OF SHIT FROM ATAM2:			
+			
+loopW:		cmp Board(r0), Player		;checks wether current tile has a white playpiece
+			bne next					;if not checks next tile
+			
+			mov r0, r5					;
+			sxt r4						;
+			div #20, r4					;finds the reminders of the index, each even reminder between 0 - 20 (excluding) indicates a different horizontal location
+			
+			cmp r5, edgeL
+			beq tileRW					;if it's right by the left ledge, move is illegal, there's no need to check if next to right ledge, since it is 
+										;obviously by the left ledge.
+			
+			mov r0, r5					;
+			sub skipC, r5				;
+			cmp Board(r5), white		;if space has a white playpiece, it cannot jump there
+			beq chckR
+			cmp Board(r5), black		;if space has a black playpiece try and initiate eat
+			beq eatL					
+			inc r1						;otherwise space is empty so a move is possible
+			br chckR
+			
+eatL:		sxt r4						;copied, have to check
+			div #20, r4					;finds the reminders of the index, to determine if close to the left
+			
+			cmp r5, edgeL
+			beq chckR					;if it's right by the left ledge, move is illegal
+
+			mov r0,r5					;otherwise, check if close to ledge has destroyed r4, we have to recreate the checked index and find now the third 
+			sub skipC, r5				;diagonal tile away from checked tile
+			sub skipC, r5				;
+			blt chckR					;if index is negative that must mean eating would get the piece out of bounds.
+			
+			cmp Board(r5), empty		;if space is empty count as eat
+			inc r1						;eating is possible. now to check a move to the right
+			
+chckR:		mov r0, r5					;
+			sxt r4						;
+			div #20, r4					;finds the reminders of the index, each even reminder between 0 - 20 (excluding) indicates a different horizontal location
+						
+			cmp r5, edgeR
+			beq next					;if it's right by the right ledge, move is illegal, check the next tile
+			
+tileRW:		mov r0, r5					;
+			sub skipF, r5				;
+			cmp Board(r5), white		;if space has a white playpiece, it cannot jump there
+			beq next
+			cmp Board(r5), black		;if space has a black playpiece try and initiate eat
+			beq eatR
+			inc r1						;otherwise space is empty so a move is possible
+			br next
+			
+eatR:		sxt r4						;copied have to check
+			div #20, r4					;finds the reminders of the index, to determine if close to the right
+			
+			cmp r5, edgeR
+			beq next					;if it's right by the right ledge, move is illegal
+			
+			mov r0,r5					;otherwise, check if close to ledge has destroyed r4, we have to recreate the checked index and find now the third 
+			sub skipF, r5				;diagonal tile away from checked tile
+			sub skipF, r5				;
+			blt next					;if index is negative, that must mean eating would get the piece out of bounds.
+			
+			cmp Board(r5), empty		;if space is empty count as eat
+			inc r1						;eating is possible. now to check the next tile
+			
+			br next						;checkes next tile
+
+next:		add #2, r0					;check next tile
+			cmp r0, #176				;if index is 176 board has been scanned top to bottom -> halt
+			ble loopW
+			halt	
+			
+loopB:		halt
+
+empty:		.word 0
+white:		.word 1
+black:		.word 2
+
+edgeL:		.word 0
+edgeR:		.word 16					;two DEFINES for reminders of division that mark a piece going off the edge, L and R stand for Left and Right accordingly
+skipF:		.word 16					;
+skipC:		.word 22					;two defines for distance of index for each jump. the jump to the closer index (C) is 16 bits away while the 
+										;farther one (F) is 22 bits away
+										
+										
+boardPos: .blkw 1
+										
+.=torg + 11000
+Board:			.word	2, 2, 2, 0, 0, 0, 0, 0
+				.word	0, 0, 0, 0, 0, 0, 0, 0
+				.word	0, 0, 0, 0, 0, 0, 0, 0
+				.word	0, 0, 2, 0, 0, 0, 0, 0
+				.word	0, 0, 0, 1, 0, 0, 0, 0
+				.word	0, 0, 0, 0, 1, 0, 0, 0
+				.word	0, 0, 0, 0, 0, 0, 0, 0
+				.word	0, 0, 0, 0, 0, 0, 0, 0
+Player:	.word	1
+Steps:  .word   2
+
+;output
+SrcPos: .blkw 1
+DstPos: .blkw 1
+WinParam: .blkw 1 
