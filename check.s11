@@ -21,10 +21,9 @@ EdgeL = 0
 	
 main: 		mov pc, sp
 			tst -(sp)
-			tst -(sp)
 			mov #Board, -(sp)
-			jsr pc, canMove
-			mov 2(sp), NumMoves
+			mov Player, -(sp)
+			jsr pc, calcWP
 			halt
 			
 	
@@ -219,6 +218,7 @@ cntMoves:	mov r0, -(sp)							;preserving r0, now used as an index for game tile
 					cmp (r3), #Empty		;if space is Empty count as eat
 					bne borderRW
 					inc r1					;eating is possible. now to check a move to the right
+					br borderRW
 			
 		;checks if playpiece is on the right border (check if can jump to the right)
 		
@@ -306,25 +306,27 @@ BordLRo:	.blkw 1						;address of the first tile in the last row of the board
 
 	;checks if player has any playpieces on board, if not that is not a winning situation
 
-checkWin:	mov r0, -(sp)				;preservation of registers
+checkWin:	
+			mov r0, -(sp)				;preservation of registers, now used to hold current players
+										;| - | board address | player | reg link | r0 |
 
 		;we pass parameters for the next function
 		
-			tst -(sp)		
-			mov 8(sp), -(sp)			;pass board address for the count play pieces routine
-			mov 8(sp), -(sp)			;pass player parameter for the count play pieces routine
-			jsr pc, cntPlay
-			mov 4(sp), PlayCnt
+			tst -(sp)					;| - | board address | player | reg link | r0 | - |
+			mov 8(sp), -(sp)			;| - | board address | player | reg link | r0 | - | board address |
+			mov 8(sp), -(sp)			;| - | board address | player | reg link | r0 | - | board address | player |
+			jsr pc, cntPlay				;| - | board address | player | reg link | r0 | number of player pieces | board address | player |
+			mov 4(sp), PlayCnt			
 			bne countP2					;if PlayCnt is 0 we know for sure hasn't won
 				br PLYnoWIN
 
 		;checks if opponnent has any playpieces on board, if not player has won
 			
 	countP2:
-			mov #3,r0					;gonna sub 3 from player num to get the next player
-			sub 12(sp),r0
-			mov r0, (sp)				;pass other player num into stack
-			jsr pc, cntPlay		
+			mov #3,r0					;used to get the number of the other player
+			sub 12(sp),r0				;
+			mov r0, (sp)				;| - | board address | player | reg link | r0 | number of player pieces | board address | opponnent |
+			jsr pc, cntPlay				;| - | board address | player | reg link | r0 | number of opponent pieces | board address | opponnent |
 			mov 4(sp), OppCnt
 			bne movesP1					;if opponnent play piece count is 0, player has won
 				br playWin
@@ -332,8 +334,8 @@ checkWin:	mov r0, -(sp)				;preservation of registers
 		;checks if player has any moves to make.
 			
 	movesP1:
-			mov 12(sp), (sp)			;moves player num to send for the check moves routine
-			jsr pc, cntMoves
+			mov 12(sp), (sp)			;| - | board address | player | reg link | r0 | number of opponent pieces | board address | player |
+			jsr pc, cntMoves			;| - | board address | player | reg link | r0 | player possible moves | board address | player |
 			tst 4(sp)					;check if has more than 0 moves for player
 			beq movesP2
 				br PLYnoWIN
@@ -341,8 +343,8 @@ checkWin:	mov r0, -(sp)				;preservation of registers
 		;checks if opponnent has any moves to make. if both players can't move count difference between playpiece number
 	
 	movesP2:
-			mov r0, (sp)				;moves opponnent num to send for the check moves routine 
-			jsr pc, cntMoves
+			mov r0, (sp)				;| - | board address | player | reg link | r0 | player possible moves | board address | opponnent |
+			jsr pc, cntMoves			;| - | board address | player | reg link | r0 | opponnent possible moves | board address | opponnent |
 			tst 4(sp)					;check if has more than 0 moves for opponnent
 			beq findDiff
 				br PLYnoWIN
@@ -357,17 +359,17 @@ checkWin:	mov r0, -(sp)				;preservation of registers
 		;unwraps routines and empties stack, win flag is up
 			
 	playWin:	
-			add sp, 6
-			mov (sp)+, r0
-			mov #1, 6(sp)
+			add #6, sp					;| - | board address | player | reg link | r0 |
+			mov (sp)+, r0				;| - | board address | player | reg link |
+			mov #1, 6(sp)				;| 1 | board address | player | reg link |
 			rts pc
 			
 		;unwraps routines and empties stack, no known win flag is up
 			
 	PLYnoWIN:
-			add sp, 6
-			mov (sp)+, r0
-			mov #-1, 6(sp)
+			add #6, sp					;| - | board address | player | reg link | r0 |
+			mov (sp)+, r0				;| - | board address | player | reg link |
+			mov #-1, 6(sp)				;| -1 | board address | player | reg link |
 			rts pc
 
 PlayCnt:	.blkw 1
@@ -430,16 +432,16 @@ BoardS:		.blkw 1						;gonna hold the addresses of the end of the game board and
 
 	;checks if both players cant move, if so returns 1, else returns -1
 	
-canMove:	tst -(sp)					;| - | board address | link reg | 
-			mov 4(sp), -(sp)			;| - | board address | link reg | -	|
-			mov #1, -(sp)				;| - | board address | link reg | - | board address | 
-			jsr pc, cntMoves			;| - | board address | link reg | - | board address | 1 |
-			tst 4(sp)					;| - | board address | link reg | (moves for player 1) | board address | 1 |
+canMove:	tst -(sp)					;| - | board address | link reg | - |
+			mov 4(sp), -(sp)			;| - | board address | link reg | - | board address | 
+			mov #1, -(sp)				;| - | board address | link reg | - | board address | 1 |
+			jsr pc, cntMoves			;| - | board address | link reg | (moves for player 1) | board address | 1 |
+			tst 4(sp)
 			bne exit2
 			
 				mov #2, (sp)			
-				jsr pc, cntMoves		;| - | board address | link reg | (moves for player 1) | board address | 2 |
-				tst 4(sp)				;| - | board address | link reg | (moves for player 2) | board address | 2 |
+				jsr pc, cntMoves		;| - | board address | link reg | (moves for player 2) | board address | 2 |
+				tst 4(sp)
 				bne exit2
 			
 					mov #1, 12(sp)		;if none can move, we want to return 1
@@ -463,6 +465,25 @@ exit2:		mov #-1, 12(sp)				;can move, return -1
 
 
 
+
+
+calcWP:	
+		;passes parameters for next function through the stack
+			
+			tst -(sp)					;| board address | player | link reg | - |
+			mov 6(sp), -(sp)			;| board address | player | link reg | - | board address |
+			mov 6(sp), -(sp)			;| board address | player | link reg | - | board address | player |
+			jsr pc, cntPlay				;| board address | player | link reg | number of pieces for player | board address | player |
+			
+			mov (sp), r4				;we want to check now how many playpieces the other player has
+			neg r4
+			add #3, r4
+			mov r4, (sp)				;| board address | player | link reg | number of pieces for player | board address | opponent |
+			mov 4(sp), r4				
+			jsr pc, cntPlay
+			sub 4(sp), r4				;now r4 holds the WP
+			add #6, sp					;| board address | player | link reg |
+			rts pc
 			
 			
 
@@ -472,18 +493,16 @@ exit2:		mov #-1, 12(sp)				;can move, return -1
 
 .=torg+5000
 
-Board:		.word	0,	2,	0,	0,	0,	0,	0,	0
-			.word	1,	0,	1,	0,	0,	0,	2,	0
-			.word	0,	2,	0,	1,	0,	1,	0,	1
-			.word	1,	0,	1,	0,	1,	0,	2,	0
-			.word	0,	2,	0,	1,	0,	1,	0,	1
-			.word	1,	0,	1,	0,	1,	0,	2,	0
-			.word	0,	2,	0,	2,	0,	2,	0,	1
-			.word	1,	0,	1,	0,	1,	0,	1,	0
+Board:		.word	0,	0,	0,	0,	0,	0,	0,	0
+			.word	0,	0,	0,	0,	0,	0,	0,	0
+			.word	0,	0,	0,	0,	0,	0,	0,	0
+			.word	0,	0,	0,	0,	0,	0,	0,	0
+			.word	0,	0,	0,	2,	0,	0,	0,	0
+			.word	2,	0,	2,	0,	2,	0,	2,	0
+			.word	0,	1,	0,	1,	0,	1,	0,	1
+			.word	0,	0,	0,	0,	0,	0,	0,	0
 									
 Player:		.word	2
 
 ; Output
 NumMoves:	.blkw	1
-		
-			
