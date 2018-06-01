@@ -5,6 +5,8 @@ SkipF = 22
 Empty = 0
 EdgeR = 16
 EdgeL = 0
+Win = 20
+Loss = -20
 
 
 
@@ -35,7 +37,7 @@ movPiece:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK!
 			mov (r1), r3				;A CHECK - REMOVE
 			rts r5
 			
-getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r4
+getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r3, r4
 										;							| STACK: srcPos, dstPos, pc
 			mov 2(sp), r0				;srcPos 
 			mov 4(sp), r1				;dstPos
@@ -46,7 +48,7 @@ getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r4
 			cmp 4(sp), #1				;if Player hasn't won yet
 			bne doNext1					;then continue
 			;releasing everything and returning:
-				mov #20, WinParam			;return 20 WP
+				mov #Win, WinParam			;return 20 WP
 				tst (sp)+					;							| STACK: srcPos, dstPos, pc, *result*, #Board
 				tst (sp)+					;							| STACK: srcPos, dstPos, pc, *result*
 				tst (sp)+					;							| STACK: srcPos, dstPos, pc
@@ -61,7 +63,7 @@ getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r4
 			cmp 4(sp), #1
 			bne doNext2
 			;releasing everything and returning:
-				mov #-20, WinParam			;return -20 WP
+				mov #Loss, WinParam			;return -20 WP
 				tst (sp)+					;							| STACK: srcPos, dstPos, pc, *result2*, #Board
 				tst (sp)+					;							| STACK: srcPos, dstPos, pc, *result2*
 				tst (sp)+					;							| STACK: srcPos, dstPos, pc
@@ -91,7 +93,10 @@ getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r4
 				rts pc
 				
 		doNext4:
-			;~doing fun things~
+			;starting the dreaded recursion loop:
+			mov #Loss, WinParam ;just the lowest number possible
+			;r3 will hold the branches' WP
+
 			rts pc
 			
 			
