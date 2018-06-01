@@ -6,7 +6,7 @@ Empty = 0
 EdgeR = 16
 EdgeL = 0
 Win = 20
-Loss = -20
+Loss = 177760 ;which is actually -20
 
 
 
@@ -17,12 +17,12 @@ main:		mov pc, sp	;init stack
 			;jsr r5, movPiece
 			;.word 2, 24 
 			;tst (sp)+ ;empty stack
-			
 			mov #2, -(sp)
 			mov #24, -(sp)
 			jsr pc, getMaxWP
 			tst (sp)+
 			tst (sp)+
+			mov WinParam, r0
 			halt
 			
 movPiece:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK!
@@ -38,7 +38,7 @@ movPiece:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK!
 			rts r5
 			
 getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r3, r4
-										;							| STACK: srcPos, dstPos, pc
+										;check Player Won:			| STACK: srcPos, dstPos, pc
 			mov 2(sp), r0				;srcPos 
 			mov 4(sp), r1				;dstPos
 			tst -(sp)					;getting ready for checkWin	| STACK: srcPos, dstPos, pc, -		
@@ -54,7 +54,7 @@ getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r3, r4
 				tst (sp)+					;							| STACK: srcPos, dstPos, pc
 				rts pc
 			
-		doNext1:						;							| STACK: srcPos, dstPos, pc, *result*, #Board, Player
+		doNext1:						;check Adversary won:		| STACK: srcPos, dstPos, pc, *result*, #Board, Player
 			mov (sp), r2
 			neg r2						;turning player to adversary (1 to 2 and 2 to 1)
 			add #3, r2					;turning player to adversary (1 to 2 and 2 to 1)
@@ -69,7 +69,7 @@ getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r3, r4
 				tst (sp)+					;							| STACK: srcPos, dstPos, pc
 				rts pc
 			
-		doNext2:						;							| STACK: srcPos, dstPos, pc, *result2*, #Board, *Adversary*
+		doNext2:						;check if steps == 0:			| STACK: srcPos, dstPos, pc, *result2*, #Board, *Adversary*
 			cmp Steps, #0				;
 			bne doNext3					;
 			;releasing everything and returning:
@@ -81,22 +81,21 @@ getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r3, r4
 				tst (sp)+					;							| STACK: srcPos, dstPos, pc
 				rts pc
 			
-		doNext3:						;							| STACK: srcPos, dstPos, pc, *result2*, #Board, *Adversary*
-			tst -(sp)					;							| STACK: srcPos, dstPos, pc, *result2*, #Board
+		doNext3:						;check if both can't move:	| STACK: srcPos, dstPos, pc, *result2*, #Board, *Adversary*
+			tst (sp)+					;							| STACK: srcPos, dstPos, pc, *result2*, #Board
 			jsr pc, canMove				;							| STACK: srcPos, dstPos, pc, *result3*, #Board
 			cmp 2(sp), #1
 			bne doNext4
 			;releasing everything and returning:
-				mov 0, WinParam
+				mov #0, WinParam
 				tst (sp)+					;							| STACK: srcPos, dstPos, pc, *result3*
 				tst (sp)+					;							| STACK: srcPos, dstPos, pc
 				rts pc
 				
-		doNext4:
+		doNext4:						;							| STACK: srcPos, dstPos, pc, *result3*, #Board
 			;starting the dreaded recursion loop:
-			mov #Loss, WinParam ;just the lowest number possible
+			;toCheckIfGotHere: mov #666, WinParam ;just the lowest number possible
 			;r3 will hold the branches' WP
-
 			rts pc
 			
 			
@@ -168,7 +167,7 @@ cntMoves:	mov r0, -(sp)							;preserving r0, now used as an index for game tile
 					
 						inc r1						;else increase numOfSteps by 1
 						br borderRB					;proceed to check the right border
-			
+					
 		;Black right border check:
 		
 	borderRB:	
@@ -551,14 +550,14 @@ calcWP:
 boardPos: .blkw 1
 										
 .=torg + 11000
-Board:			.word	2, 0, 2, 0, 2, 0, 2, 0
-				.word	0, 1, 0, 1, 0, 0, 0, 0
-				.word	0, 0, 0, 0, 1, 0, 1, 0
+Board:			.word	1, 0, 1, 0, 1, 0, 1, 0
 				.word	0, 0, 0, 0, 0, 0, 0, 0
 				.word	0, 0, 0, 0, 0, 0, 0, 0
 				.word	0, 0, 0, 0, 0, 0, 0, 0
 				.word	0, 0, 0, 0, 0, 0, 0, 0
 				.word	0, 0, 0, 0, 0, 0, 0, 0
+				.word	0, 0, 0, 0, 0, 0, 0, 0
+				.word	0, 0, 0, 2, 0, 2, 0, 2
 Player:	.word	1
 Steps:  .word   2
 
