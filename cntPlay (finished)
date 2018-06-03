@@ -20,7 +20,7 @@ cntPlay:
 			dec r1
 			dec r1
 			cmp r1, BoardS
-			ble exit2
+			blt exit2
 			
 				cmp (r1), r0
 				bne loop1
