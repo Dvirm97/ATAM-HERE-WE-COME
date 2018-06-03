@@ -1,6 +1,7 @@
-			
 movPiece:
 										;| STACK: #Board, reg link (r5)
+										;input:	SourcePosition - inline (r5++)
+										;		DestinPosition - inline (r5+2)
 										
 			mov r0, -(sp)				;| #Board | reg link | r0 |
 			mov 4(sp), r0				;asign Board address to r0 
@@ -17,4 +18,3 @@ movPiece:
 			mov (sp)+, r0				;| #Board | reg link |
 			
 			rts r5
-			
