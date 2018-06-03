@@ -1,0 +1,20 @@
+			
+movPiece:
+										;| STACK: #Board, reg link (r5)
+										
+			mov r0, -(sp)				;| #Board | reg link | r0 |
+			mov 4(sp), r0				;asign Board address to r0 
+			mov r1, -(sp)				;| #Board | reg link | r0 | r1 |
+			mov (r5)+, r1				;assign SrcPos to r1
+			mov r2, -(sp)				;| #Board | reg link | r0 | r1 | r2 |
+			mov (r5)+, r2				;assign DstPos to r2
+			add r0, r1					;add boardPos to SrcPos in order to get the actual adress
+			add r0, r2					;add boardPos to DstPos in order to get the actual adress 
+			mov (r1), (r2)				;assign SrcPos to DstPos
+			mov #0, (r1)				;assign 0 to SrcPos
+			mov (sp)+, r2				;| #Board | reg link | r0 | r1 |
+			mov (sp)+, r1				;| #Board | reg link | r0 |
+			mov (sp)+, r0				;| #Board | reg link |
+			
+			rts r5
+			
