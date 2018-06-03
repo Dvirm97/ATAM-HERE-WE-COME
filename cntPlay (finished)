@@ -1,0 +1,38 @@
+cntPlay:
+					; | STACK:    -    , #Board, Player, pc 
+					;input:		empty space for output				- in stack
+					;			board address						- in stack
+					;			player for which win is checked		- in stack
+					;output:	number of play pieces for player	- in stack in empty space
+			
+			mov r0, -(sp)				;preserve r0, now used to hold the player's num
+			mov 4(sp), r0
+			mov r1, -(sp)				;preserve r1, now used to hold the address of board's tiles
+			mov 10(sp), r1	
+			mov r1, BoardS
+			mov r2, -(sp)
+			clr r2						;preserve r2, now used to count playpieces
+			
+			add #200, r1
+			
+			
+	loop:
+			dec r1
+			dec r1
+			cmp r1, BoardS
+			ble exit1
+			
+				cmp (r1), r0
+				bne loop
+			
+					inc r2
+					br loop
+			
+	exit1:		
+			mov r2, 14(sp)
+			mov (sp)+, r2
+			mov (sp)+, r1
+			mov (sp)+, r0
+			rts pc
+
+BoardS:		.blkw 1						;gonna hold the addresses of the end of the game board and beginning
