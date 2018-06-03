@@ -1,0 +1,98 @@
+getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r3, r4
+											;check Player Won:			| STACK: SrcPos, DstPos, WinParam, pc
+							
+			mov r1, -(sp)				;| SrcPos | DstPos | WinParam | pc | r1 |
+			mov 4(sp), r1				;r1 now holds WinParam address
+			mov r4, -(sp)				;| SrcPos | DstPos | WinParam | pc | r1 | r4 |
+			mov 12(sp), r4				;r4 now holds SrcPos address
+			mov r5, -(sp)				;| SrcPos | DstPos | WinParam | pc | r1 | r4 | r5 |
+			mov 12(sp), r5				;r5 now holds DstPos
+			mov r0, -(sp)				;| SrcPos | DstPos | WinParam | pc | r1 | r4 | r5 | r0 |
+			mov r2, -(sp)				;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 |
+			mov r3, -(sp)				;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 |
+			clr r0						;now used as an index for board tiles
+			clr r2						; 
+			clr r3						;both now used for calculations
+			
+			;getting ready for checkWin, if board was already at winning position we need to return 20 as WP and the src and dst of one of player's playpiece
+										
+			tst -(sp)					;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 | - |
+			mov #Board, -(sp)			;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 | - | #Board |
+			mov Player, -(sp)			;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 | - | #Board | Player |
+			jsr pc, checkWin			;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 | *result* | #Board | Player | 
+			cmp 4(sp), #1				;if Player hasn't won yet
+			bne doNext1					;then continue
+			
+			;releasing everything and returning:
+				mov #Win, (r1)				;return 20 WP
+				mov #Board, r0				;if board was already in a winning position we need to return a src and dst
+				add #2, r0
+				
+		loopFindPlayer:		
+				sub #2, r0
+				cmp (r0), Player
+				bne loopFindPlayer
+					
+					mov r0, (r4)
+					mov r0, (r5)
+					tst (sp)+					;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 | *result* | #Board |
+					tst (sp)+					;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 | *result* |
+					tst (sp)+					;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 |
+		return:
+					mov (sp)+, r3				;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 |
+					mov (sp)+, r2				;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 |
+					mov (sp)+, r0				;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 |
+					mov (sp)+, r1				;| SrcPos | DstPos | WinParam | pc | r5 | r4 |
+					mov (sp)+, r4				;| SrcPos | DstPos | WinParam | pc | r5 |
+					mov (sp)+, r5				;| SrcPos | DstPos | WinParam | pc |
+					rts pc
+			
+		doNext1:						;check Adversary won:		| STACK: SrcPos, DstPos, WinParam, pc, r5, r4, r1, r0, r2, r3, *result*, #Board, Player
+			mov (sp), r2
+			neg r2						;turning player to adversary (1 to 2 and 2 to 1)
+			add #3, r2					;turning player to adversary (1 to 2 and 2 to 1)
+			mov r2, (sp)				;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 | *result* | #Board | *Adversary* | 
+			jsr pc, checkWin			;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 | *result2* | #Board | *Adversary* | 
+			cmp 4(sp), #1
+			bne doNext2
+			;releasing everything and returning:
+				mov #Loss, (r1)				;return -20 WP
+				mov #Board, r0				;if board was already in a winning position we need to return a src and dst
+				add #2, r0
+				br loopFindPlayer
+			
+		doNext2:						;check if steps == 0:			| STACK: #srcPos, #dstPos, WinParam, pc, r5, r4, r1, r0, r2, r3, *result2*, #Board, *Adversary*
+			mov Player, (sp)
+			cmp Steps, #0				;
+			bne doNext3					;
+			;releasing everything and returning:
+				jsr pc, calcWP				;calcWP; puts result in r4
+				mov r4, (r1)				;return calcWP
+				tst (sp)+					;							| STACK: #srcPos, #dstPos, pc, r5, r4, r1, r0, r2, r3, *result2*, #Board
+				tst (sp)+					;							| STACK: #srcPos, #dstPos, pc, r5, r4, r1, r0, r2, r3, *result2*
+				tst (sp)+					;							| STACK: #srcPos, #dstPos, pc, r5, r4, r1, r0, r2, r3
+				br return
+			
+		doNext3:						;check if both can't move:	| STACK: #srcPos, #dstPos, pc, *result2*, #Board, *Adversary*
+			tst (sp)+					;							| STACK: #srcPos, #dstPos, pc, *result2*, #Board
+			jsr pc, canMove				;							| STACK: #srcPos, #dstPos, pc, *result3*, #Board
+			cmp 2(sp), #1
+			bne doNext4
+			;releasing everything and returning:
+				mov #0, (r1)
+				tst (sp)+					;							| STACK: #srcPos, #dstPos, pc, *result3*
+				tst (sp)+					;							| STACK: #srcPos, #dstPos, pc
+				rts pc
+				
+		doNext4:						;							| STACK: #srcPos, #dstPos, pc, *result3*, #Board
+										;| r0 - index 
+										;| r1 - #WinParam 
+										;| r2 - calcs 
+										;| r3 - calcs 
+										;| r4 - srcPos 
+										;| r5 - dstPos
+			;here comes the dreaded recursion loop:
+			;r4 will hold the branches' WP
+			;r0 holds the index
+			
+			halt ;~REMOVE~
