@@ -13,10 +13,6 @@ Loss = 177760 ;which is actually -20
 . = torg + 2000	
 main:		mov pc, sp	;init stack
 			tst -(sp) 	;init stack
-			;mov #Board, -(sp)
-			;jsr r5, movPiece
-			;.word 2, 24 
-			;tst (sp)+ ;empty stack
 			mov #2, -(sp)
 			mov #24, -(sp)
 			jsr pc, getMaxWP
@@ -25,9 +21,85 @@ main:		mov pc, sp	;init stack
 			mov WinParam, r0
 			halt
 
-;minOrMax:	
+isOnLeft:	;checks whether a certain index is on the first column of the board - returns 1 if yes, 0 if not
+			;										LR - pc
+			;										the index - in stack (on top of the stack)
+			;										output - in stack (below the index)
+			;														| STACK: ..., - (place_for_output), index, pc
+			clr 4(sp)					;set result to 0 by default	| STACK: ..., 0, index, pc
+			mov r0, -(sp)				;							| STACK: ..., 0, index, pc, ^r0
+			mov r1, -(sp)				;							| STACK: ..., 0, index, pc, ^r0, ^r1
+			mov 6(sp), r1				;							| STACK: ..., 0, index, pc, ^r0, ^r1
+			sxt r0
+			div #20, r0
+			cmp r1, #EdgeL
+			bne iolNext
+				mov #1, 10(sp)				;set result to 1			| STACK: ..., 1, index, pc, ^r0, ^r1
+		iolNext:
+			mov (sp)+, r1				;							| STACK: ..., 0/1, index, pc, ^r0
+			mov (sp)+, r0				;							| STACK: ..., 0/1, index, pc
+			rts pc
+			
+			
+isOnRght:	;checks whether a certain index is on the last column of the board - returns 1 if yes, 0 if not
+			;										LR - pc
+			;										the index - in stack (on top of the stack)
+			;										output - in stack (below the index)
+			;														| STACK: ..., - , index, pc
+			clr 4(sp)					;set result to 0 by default	| STACK: ..., 0, index, pc
+			mov r0, -(sp)				;							| STACK: ..., 0, index, pc, ^r0
+			mov r1, -(sp)				;							| STACK: ..., 0, index, pc, ^r0, ^r1
+			mov 6(sp), r1				;							| STACK: ..., 0, index, pc, ^r0, ^r1
+			sxt r0
+			div #20, r0
+			cmp r1, #EdgeR
+			bne iorNext
+				mov #1, 10(sp)				;set result to 1			| STACK: ..., 1, index, pc, ^r0, ^r1
+		iorNext:
+			mov (sp)+, r1				;							| STACK: ..., 0/1, index, pc, ^r0
+			mov (sp)+, r0				;							| STACK: ..., 0/1, index, pc
+			rts pc
+			
+			
+			
+isOnTop:	;checks whether a certain index is on the first row of the board - returns 1 if yes, 0 if not
+			;										LR - pc
+			;										the index - in stack (on top of the stack)
+			;										output - in stack (below the index)
+			;														| STACK: ..., - , index, pc
+			clr 4(sp)					;set result to 0 by default	| STACK: ..., 0, index, pc
+			mov r0, -(sp)				;							| STACK: ..., 0, index, pc, ^r0
+			mov 4(sp), r0				;							| STACK: ..., 0, index, pc, ^r0
+			cmp r0, #20
+			blt iotNext
+				mov #1, 6(sp)				;set result to 1			| STACK: ..., 1, index, pc, ^r0
+		iotNext:
+			mov (sp)+, r0				;							| STACK: ..., 0/1, index, pc
+			rts pc
+			
+
+isOnBtm:	;checks whether a certain index is on the last row of the board - returns 1 if yes, 0 if not
+			;										LR - pc
+			;										the index - in stack (on top of the stack)
+			;										output - in stack (below the index)
+			;														| STACK: ..., - , index, pc
+			clr 4(sp)					;set result to 0 by default	| STACK: ..., 0, index, pc
+			mov r0, -(sp)				;							| STACK: ..., 0, index, pc, ^r0
+			mov 4(sp), r0				;							| STACK: ..., 0, index, pc, ^r0
+			cmp r0, #160
+			bgt iobNext
+				mov #1, 6(sp)				;set result to 1			| STACK: ..., 1, index, pc, ^r0
+		iobNext:
+			mov (sp)+, r0				;							| STACK: ..., 0/1, index, pc
+			rts pc
+			
+			
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
 			
 movPiece:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK!
+			
 			mov 2(sp), r0				;asign boardPos to r0 
 			mov (r5)+, r1				;assign srcPos to r1
 			mov (r5)+, r2				;assign dstPos to r2
@@ -41,8 +113,6 @@ movPiece:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK!
 			
 getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r3, r4
 										;check Player Won:			| STACK: srcPos, dstPos, pc
-			mov 2(sp), r0				;srcPos 
-			mov 4(sp), r1				;dstPos
 			tst -(sp)					;getting ready for checkWin	| STACK: srcPos, dstPos, pc, -		
 			mov #Board, -(sp)			;getting ready for checkWin	| STACK: srcPos, dstPos, pc, -, #Board
 			mov Player, -(sp)			;getting ready for checkWIn	| STACK: srcPos, dstPos, pc, -, #Board, Player
@@ -57,12 +127,13 @@ getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r3, r4
 				rts pc
 			
 		doNext1:						;check Adversary won:		| STACK: srcPos, dstPos, pc, *result*, #Board, Player
-			mov (sp), r2
-			neg r2						;turning player to adversary (1 to 2 and 2 to 1)
-			add #3, r2					;turning player to adversary (1 to 2 and 2 to 1)
-			mov r2, (sp)				;							| STACK: srcPos, dstPos, pc, *result*, #Board, *Adversary*
+			mov (sp), r0
+			neg r0						;turning player to adversary (1 to 2 and 2 to 1)
+			add #3, r0					;turning player to adversary (1 to 2 and 2 to 1)
+			mov r0, (sp)				;							| STACK: srcPos, dstPos, pc, *result*, #Board, *Adversary*
 			jsr pc, checkWin			;							| STACK: srcPos, dstPos, pc, *result2*, #Board, *Adversary*
 			cmp 4(sp), #1
+			mov Player, (sp)			;							| STACK: srcPos, dstPos, pc, *result2*, #Board, Player
 			bne doNext2
 			;releasing everything and returning:
 				mov #Loss, WinParam			;return -20 WP
@@ -71,11 +142,10 @@ getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r3, r4
 				tst (sp)+					;							| STACK: srcPos, dstPos, pc
 				rts pc
 			
-		doNext2:						;check if steps == 0:			| STACK: srcPos, dstPos, pc, *result2*, #Board, *Adversary*
+		doNext2:						;check if steps == 0:			| STACK: srcPos, dstPos, pc, *result2*, #Board, Player
 			cmp Steps, #0				;
 			bne doNext3					;
 			;releasing everything and returning:
-				mov Player, (sp)			;							| STACK: srcPos, dstPos, pc, *result2*, #Board, Player
 				jsr pc, calcWP				;calcWP; puts result in r4
 				mov r4, WinParam			;return calcWP
 				tst (sp)+					;							| STACK: srcPos, dstPos, pc, *result2*, #Board
@@ -83,7 +153,7 @@ getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r3, r4
 				tst (sp)+					;							| STACK: srcPos, dstPos, pc
 				rts pc
 			
-		doNext3:						;check if both can't move:	| STACK: srcPos, dstPos, pc, *result2*, #Board, *Adversary*
+		doNext3:						;check if both can't move:	| STACK: srcPos, dstPos, pc, *result2*, #Board, Player
 			tst (sp)+					;							| STACK: srcPos, dstPos, pc, *result2*, #Board
 			jsr pc, canMove				;							| STACK: srcPos, dstPos, pc, *result3*, #Board
 			cmp 2(sp), #1
@@ -95,14 +165,50 @@ getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r3, r4
 				rts pc
 				
 		doNext4:						;							| STACK: srcPos, dstPos, pc, *result3*, #Board
-			;starting the dreaded recursion loop:
-			;r3 will hold the branches' WP
-			tst (sp)+
-			tst (sp)+
+			;here comes the dreaded recursion loop:
+			;r4 will hold the branches' WP
+			;r0 holds the index
+			tst (sp)+					;							| STACK: srcPos, dstPos, pc, *result3*
+			tst (sp)+					;							| STACK: srcPos, dstPos, pc
+			
+			tst -(sp)					;							| STACK: srcPos, dstPos, pc, -
+			cmp Player, #White
+			beq gwpLoopW
+			mov #-2, r0 				;so it will start from 0 once it adds 2
+		gwpLoopB:
+			add #2, r0
+			cmp r0, #160
+			bge gwpEnd
+			
+			mov #Board, (sp)			;							| STACK: srcPos, dstPos, pc, #Board
+			add	r0, (sp)				;							| STACK: srcPos, dstPos, pc, #Board+index
+			cmp @(sp), #Black			;NOT SURE ABOUT THIS
+			bne gwpLoopB
+			tst -(sp)					;							| STACK: srcPos, dstPos, pc, #Board+index, - 
+			mov r0, -(sp)				;							| STACK: srcPos, dstPos, pc, #Board+index, - , index
+			jsr pc, isOnLeft			;							| STACK: srcPos, dstPos, pc, #Board+index, *result*, index
+			cmp 2(sp), #1
+			beq gwpRB
+			tst (sp)+					;							| STACK: srcPos, dstPos, pc, #Board+index
+			mov 2(sp), -(sp)			;2(sp) or (sp)?				| STACK: srcPos, dstPos, pc, #Board+index, #Board+index
+			add #16, (sp)				;							| STACK: srcPos, dstPos, pc, #Board+index, #Board+stepIndex
+			cmp @(sp), #1				;NOT SURE ABOUT THIS
+			bgt gwpRB 					;which means contains black 
+			blt gwpNext5				;which means is empty
+			
+			
+		gwpNext5:
+			;RECURSION
+			rts pc
+		gwpRB:
+			rts pc
+		gwpLoopW:
+			rts pc
+		gwpEnd:
 			rts pc
 			
 			
-			
+	
 ;SHIT THAT WAS PREVIOUSLY FROM ATAM2			
 cntMoves:	mov r0, -(sp)							;preserving r0, now used as an index for game tiles
 			mov 6(sp), r0
