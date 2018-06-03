@@ -1,0 +1,27 @@
+canMove:				;checks if both players cant move, if so returns 1, else returns -1
+			
+						; | STACK:    -    , #Board, PC
+						; 	input: 	empty space for result	- in stack
+						;			Board address			- in stack
+						;	output:	1 if both players cant move
+						;			returns -1 otherwise in	- in stack in the empty space
+			
+			tst -(sp)					;| - | board address | link reg | - |
+			mov 4(sp), -(sp)			;| - | board address | link reg | - | board address | 
+			mov #1, -(sp)				;| - | board address | link reg | - | board address | 1 |
+			jsr pc, cntMoves			;| - | board address | link reg | (moves for player 1) | board address | 1 |
+			tst 4(sp)
+			bne exit3
+			
+				mov #2, (sp)			
+				jsr pc, cntMoves		;| - | board address | link reg | (moves for player 2) | board address | 2 |
+				tst 4(sp)
+				bne exit2
+			
+					mov #1, 12(sp)		;if none can move, we want to return 1
+					add #6, sp
+					rts pc
+					
+	exit3:	mov #-1, 12(sp)				;can move, return -1
+			add #6, sp
+			rts pc		
