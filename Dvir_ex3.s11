@@ -25,7 +25,7 @@ main:		mov pc, sp	;init stack
 			mov WinParam, r0
 			halt
 
-minOrMax:	
+;minOrMax:	
 			
 movPiece:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK!
 			mov 2(sp), r0				;asign boardPos to r0 
@@ -96,8 +96,9 @@ getMaxWP:	;STILL HAVE TO SAVE REGISTER CONTENT IN STACK! r0, r1, r2, r3, r4
 				
 		doNext4:						;							| STACK: srcPos, dstPos, pc, *result3*, #Board
 			;starting the dreaded recursion loop:
-			;toCheckIfGotHere: mov #666, WinParam ;just the lowest number possible
 			;r3 will hold the branches' WP
+			tst (sp)+
+			tst (sp)+
 			rts pc
 			
 			
@@ -556,8 +557,8 @@ Board:			.word	1, 0, 1, 0, 1, 0, 1, 0
 				.word	0, 0, 0, 0, 0, 0, 0, 0
 				.word	0, 0, 0, 0, 0, 0, 0, 0
 				.word	0, 0, 0, 0, 0, 0, 0, 0
-				.word	0, 0, 0, 0, 0, 0, 0, 0
-				.word	0, 0, 0, 0, 0, 0, 0, 0
+				.word	0, 0, 1, 0, 0, 0, 0, 0
+				.word	0, 0, 0, 2, 0, 0, 0, 0
 				.word	0, 0, 0, 0, 0, 0, 0, 0
 				.word	0, 0, 0, 2, 0, 2, 0, 2
 Player:	.word	1
