@@ -1,0 +1,97 @@
+
+		
+
+										;check Player Won:			| STACK: SrcPos, DstPos, WinParam, pc
+							
+			mov r1, -(sp)				;| SrcPos | DstPos | WinParam | pc | r1 |
+			mov 4(sp), r1				;r1 now holds WinParam address
+			mov r4, -(sp)				;| SrcPos | DstPos | WinParam | pc | r1 | r4 |
+			mov 12(sp), r4				;r4 now holds SrcPos address
+			mov r5, -(sp)				;| SrcPos | DstPos | WinParam | pc | r1 | r4 | r5 |
+			mov 12(sp), r5				;r5 now holds DstPos
+			mov r0, -(sp)				;| SrcPos | DstPos | WinParam | pc | r1 | r4 | r5 | r0 |
+			mov r2, -(sp)				;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 |
+			mov r3, -(sp)				;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 |
+			clr r0						;now used as an index for board tiles
+			clr r2						; 
+			clr r3						;both now used for calculations
+			
+			;getting ready for checkWin, if board was already at winning position we need to return 20 as WP and the src and dst of one of player's playpiece
+										
+			tst -(sp)					;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 | - |
+			mov #Board, -(sp)			;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 | - | #Board |
+			mov Player, -(sp)			;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 | - | #Board | Player |
+			jsr pc, checkWin			;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 | *result* | #Board | Player | 
+			cmp 4(sp), #1				;if Player hasn't won yet
+			bne doNext1					;then continue
+			
+			;releasing everything and returning:
+				mov #Win, (r5)			;return 20 WP
+				
+				mov #Board, r0				;if board was already in a winning position we need to return a src and dst
+				add #2, r0
+				
+		loopFindplayer:		
+				sub #2, r0
+				cmp (r0), player
+				bne loopFindplayer
+					
+					mov r0, (r4)
+					mov r0, (r5)
+					tst (sp)+					;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 | *result* | #Board |
+					tst (sp)+					;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 | *result* |
+					tst (sp)+					;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 |
+					mov (sp)+, r3				;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 |
+					mov (sp)+, r2				;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 |
+					mov (sp)+, r0				;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 |
+					mov (sp)+, r1				;| SrcPos | DstPos | WinParam | pc | r5 | r4 |
+					mov (sp)+, r4				;| SrcPos | DstPos | WinParam | pc | r5 |
+					mov (sp)+, r5				;| SrcPos | DstPos | WinParam | pc |
+					
+					rts pc
+			
+		doNext1:						;check Adversary won:		| STACK: SrcPos, DstPos, WinParam, pc, r5, r4, r1, r0, r2, r3, *result*, #Board, Player
+			mov (sp), r2
+			neg r2						;turning player to adversary (1 to 2 and 2 to 1)
+			add #3, r2					;turning player to adversary (1 to 2 and 2 to 1)
+			mov r2, (sp)				;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 | *result* | #Board | opponnent | 
+			jsr pc, checkWin			;| SrcPos | DstPos | WinParam | pc | r5 | r4 | r1 | r0 | r2 | r3 | *result2* | #Board | opponnent | 
+			cmp 4(sp), #1
+			bne doNext2
+			;releasing everything and returning:
+				mov #Loss, (r5)				;return -20 WP
+				mov #Board, r0				;if board was already in a winning position we need to return a src and dst
+				add #2, r0
+				br loopFindplayer
+        
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~סוף התיקונים של אוריה
+;                                                                                                     החל מפה שטח לא ידוע
+			
+		doNext2:						;check if steps == 0:		| STACK: SrcPos, DstPos, WinParam, pc, r5, r4, r1, r0, r2, r3, *result2*, #Board, opponnent
+			cmp Steps, #0				;
+			bne doNext3					;
+			;releasing everything and returning:
+				mov Player, (sp)			;							| STACK: SrcPos, DstPos, pc, *result2*, #Board, Player
+				jsr pc, calcWP				;calcWP; puts result in r4
+				mov r4, WinParam			;return calcWP
+				tst (sp)+					;							| STACK: SrcPos, DstPos, pc, *result2*, #Board
+				tst (sp)+					;							| STACK: SrcPos, DstPos, pc, *result2*
+				tst (sp)+					;							| STACK: SrcPos, DstPos, pc
+				rts pc
+			
+		doNext3:						;check if both can't move:	| STACK: SrcPos, DstPos, pc, *result2*, #Board, *Adversary*
+			tst (sp)+					;							| STACK: SrcPos, DstPos, pc, *result2*, #Board
+			jsr pc, canMove				;							| STACK: SrcPos, DstPos, pc, *result3*, #Board
+			cmp 2(sp), #1
+			bne doNext4
+			;releasing everything and returning:
+				mov #0, WinParam
+				tst (sp)+					;							| STACK: SrcPos, DstPos, pc, *result3*
+				tst (sp)+					;							| STACK: SrcPos, DstPos, pc
+				rts pc
+				
+		doNext4:						;							| STACK: SrcPos, DstPos, pc, *result3*, #Board
+			;starting the dreaded recursion loop:
+			;toCheckIfGotHere: mov #666, WinParam ;just the lowest number possible
+			;r3 will hold the branches' WP
+			rts pc
