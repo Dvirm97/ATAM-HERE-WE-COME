@@ -1,0 +1,239 @@
+cntMoves:	
+
+				;| STACK:   -   , #Board, Player, pc
+				;input: empty space for output  	- in stack
+				;		Player						- in stack
+				;		board address				- in stack
+				;output: number of possible moves 	- in empty space in stack
+			
+
+			mov r0, -(sp)							;preserving r0, now used as an index for game tiles
+			mov 6(sp), r0
+			mov r0, BoardB
+			mov r0, BoardE
+			mov r0, BordLRo
+			add #176, BoardE
+			add #160, BordLRo
+			mov r1, -(sp)							;preserving r1, now used to count the possible moves
+			clr r1
+			mov r2, -(sp)							;preserving r2, now used for calculations
+			mov r3, -(sp)							;preserving r3, now used for calculations
+			mov r4, -(sp)							;preserving r4, now used to hold player's turn
+			mov 14(sp) , r4
+			
+			add #156, r0							;starts to go throught indexes from the end to beginning
+			cmp #Black, r4			
+			beq cLoopB
+			
+				sub #136, r0						;starts at the second last row, because there is no use checking for the last row
+				br cLoopW							;checks whose turn it is
+			
+		;a loop for counting possible moves in case player is Black
+			
+	cLoopB:
+			cmp (r0), #Black
+			bne cNextB								;if not Black, proceed to nextB tile
+			
+	;Black left border check:			
+
+				mov r0, r3							;for r2r3 we check if r3(mod 20) == 0, which means we're at the left border
+				sxt r2					
+				div #20, r2
+				cmp r3, #EdgeL						;if on left border - 
+				beq cTileRB							; - proceed to check right move tile (skip the right border check)			
+			
+	;B left occupation check:
+		
+			mov r0, r3
+			add #SkipC, r3
+			cmp (r3), #White
+			bgt cBordrRB 							;if left move tile has Black, proceed to check right border
+			beq cLeapLB								;if left move tile has White, proceed to check left leap
+					
+				inc r1								;else increase numOfSteps by 1
+				br cBordrRB							;proceed to check the right border 
+
+		;checks if player can leap (eat) the playpiece on its left
+			
+	cLeapLB:	
+			cmp r3, BordLRo							;if White is at last row -
+			bge cBordrRB							; - proceed to check right border
+			
+				tst r3
+				sxt r2	
+				div #20, r2
+				cmp r3, #EdgeL						;if White is at left border - 
+				beq cBordrRB						; - proceed to check right border
+				
+					mov r0, r3					
+					add #SkipC, r3
+					add #SkipC, r3	
+					cmp (r3), #Empty				;if left leap tile is occupied - 
+					bne cBordrRB					; - proceed to check right border
+					
+						inc r1						;else increase numOfSteps by 1
+						br cBordrRB					;proceed to check the right border
+					
+		;Black right border check:
+		
+	cBordrRB:	
+			mov r0, r3
+			sxt r2
+			div #20, r2
+			cmp r3, #EdgeR							;if on right border - 
+			beq cNextB								;proceed to nextB tile
+			
+		;the label signifies a situation where we want to check if Black player can proceed to the right diagonal, when we know he is not on the right border
+			
+	cTileRB:
+			mov r0, r3
+			add #SkipF, r3
+			cmp (r3), #White			
+			bgt cNextB								;if right move tile has Black, proceed to nextB tile
+			
+				beq cLeapRB							;if right move tile has White, proceed to check right leap 
+				
+					inc r1							;else increase numOfSteps by 1
+					br cNextB						; proceed to nextB tile
+			
+		;checks if player can leap (eat) the playpiece on its right
+			
+	cLeapRB:	
+			cmp r3, BordLRo							;if White is at last row - 			
+			bge cNextB								; - proceed to nextB tile
+			
+				tst r3
+				sxt r2
+				div #20, r2
+				cmp r3, #EdgeR						;if White is at right border - 
+				beq cNextB							;proceed to nextB tile
+				
+					mov r0, r3
+					add #SkipF, r3					
+					add #SkipF, r3					
+					cmp (r3), #Empty				;if right leap tile is occupied - 
+					bne cNextB						; - proceed to nextB tile
+					
+						inc r1						;else increase numOfSteps by 1
+						br cNextB
+
+		;checks next tile for moves.
+						
+	cNextB:
+			sub #2, r0								;going from end to start, each tile a word (so *2* bytes)
+			cmp r0, BoardB
+			bge cLoopB
+				br exit1
+		
+		
+
+
+		;a loop for counting possible moves in case player is White			
+			
+	cLoopW:		
+			cmp (r0), r4					;checks wether current tile has a White playpiece
+			bne cNextW						;if not checks next tile
+			
+				mov r0, r3						;
+				sxt r2							;
+				div #20, r2						;finds the reminders of the index, each even reminder between 0 - 20 (excluding) indicates a different horizontal location
+			
+				cmp r3, #EdgeL
+				beq cTileRW					;if it's right by the left ledge, move is illegal, there's no need to check if next to right ledge, since it is 
+											;obviously by the left ledge.
+			
+			mov r0, r3					
+			sub #SkipF, r3				
+			
+			cmp (r3), #White				;if space has a White playpiece, it cannot jump there
+			beq cBordrRW
+				cmp (r3), #Black			;if space has a Black playpiece try and initiate eat
+				beq cLeapLW					
+					inc r1					;otherwise space is Empty so a move is possible
+					br cBordrRW
+	
+		;checks if player can leap (eat) the playpiece on its left
+	
+	cLeapLW:
+			tst r3
+			sxt r2						
+			div #20, r2						;finds the reminders of the index, to determine if close to the left
+			
+			cmp r3, #EdgeL
+			beq cBordrRW					;if it's right by the left ledge, move is illegal
+
+				mov r0,r3					;otherwise, check if close to ledge has destroyed r2, we have to recreate the checked index and find now the third 
+				sub #SkipF, r3				;diagonal tile away from checked tile
+				sub #SkipF, r3				;
+				cmp r3, BoardB
+				blt cBordrRW				;if index is negative that must mean eating would get the piece out of bounds.
+				
+					cmp (r3), #Empty		;if space is Empty count as eat
+					bne cBordrRW
+					inc r1					;eating is possible. now to check a move to the right
+					br cBordrRW
+			
+		;checks if playpiece is on the right border (check if can jump to the right)
+		
+	cBordrRW:
+			mov r0, r3						;
+			sxt r2							;
+			div #20, r2						;finds the reminders of the index, each even reminder between 0 - 20 (excluding) indicates a different horizontal location
+						
+			cmp r3, #EdgeR
+			beq cNextW						;if it's right by the right ledge, move is illegal, check the next tile
+			
+		;the label signifies a situation where we want to check if Black player can proceed to the right diagonal, when we know he is not on the right border
+			
+			
+	cTileRW:
+			mov r0, r3						;
+			sub #SkipC, r3					;
+			cmp (r3), #White				;if space has a White playpiece, it cannot jump there
+			beq cNextW
+				cmp (r3), #Black			;if space has a Black playpiece try and initiate eat
+				beq cLeapRW
+				inc r1						;otherwise space is Empty so a move is possible
+				br cNextW
+		
+		;checks if player can leap (eat) the playpiece on its left
+	
+	cLeapRW:	
+			tst r3
+			sxt r2						
+			div #20, r2						;finds the reminders of the index, to determine if close to the right
+			
+			cmp r3, #EdgeR
+			beq cNextW						;if it's right by the right ledge, move is illegal
+			
+				mov r0,r3					;otherwise, check if close to ledge has destroyed r2, we have to recreate the checked index and find now the third 
+				sub #SkipC, r3				;diagonal tile away from checked tile
+				sub #SkipC, r3				;
+				cmp r3, BoardB				;
+				blt cNextW					;if index is negative, that must mean eating would get the piece out of bounds.
+			
+				cmp (r3), #Empty			;if space is Empty count as eat
+				bne cNextW
+					inc r1					;eating is possible. now to check the nextW tile
+					br cNextW				;checkes nextW tile
+
+		;check next tile index
+			
+	cNextW:	
+			add #2, r0						;check nextW tile
+			cmp r0, BoardE					;if index is 176 board has been scanned top to bottom -> halt
+			ble cLoopW
+
+		;unfold routine and Empty the stack
+	exit1:
+				mov r1, 20(sp)
+				mov (sp)+, r4
+				mov (sp)+, r3
+				mov (sp)+, r2
+				mov (sp)+, r1
+				mov (sp)+, r0			
+				rts pc
+		
+BoardB:		.blkw 1						;gonna hold the addresses of the end of the game board and beginning
+BoardE:		.blkw 1						;
+BordLRo:	.blkw 1						;address of the first tile in the last row of the board
