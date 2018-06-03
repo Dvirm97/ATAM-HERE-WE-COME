@@ -1,0 +1,20 @@
+calcWP:	
+		;passes parameters for next function through the stack
+		;								#Board, in stack
+		;								Player, in stack
+		;								returns WP in check
+			
+			tst -(sp)					;| board address | player | link reg | - |
+			mov 6(sp), -(sp)			;| board address | player | link reg | - | board address |
+			mov 6(sp), -(sp)			;| board address | player | link reg | - | board address | player |
+			jsr pc, cntPlay				;| board address | player | link reg | number of pieces for player | board address | player |
+			
+			mov (sp), r4				;we want to check now how many playpieces the other player has
+			neg r4
+			add #3, r4
+			mov r4, (sp)				;| board address | player | link reg | number of pieces for player | board address | *Adversary* |
+			mov 4(sp), r4				
+			jsr pc, cntPlay
+			sub 4(sp), r4				;now r4 holds the WP
+			add #6, sp					;| board address | player | link reg |
+			rts pc
