@@ -1,0 +1,13 @@
+minOrMax:
+					;| STACK: 	curr_player, #Player, pc
+					;input:		curr_player 											- in stack
+					;			player's address										- in stack
+					;output:	1 if looking for maximum or -1 if looking for minimum	- in r4
+					
+			cmp @2(sp), 4(sp)
+			beq	equal
+				mov #-1, r4
+				rts pc
+		equal:
+			mov #1, r4
+			rts pc
