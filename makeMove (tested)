@@ -1,0 +1,100 @@
+makeMove:
+		;makes a move and checks the best WP awarded by this move
+										;input:	 	src tile 								- in r4
+										;			dest tile								- in r5
+										;			Board address 							- in stack
+										;			player address							- in stack
+										;			steps left								- in stack
+										;			local_max or min to compare the WP with - in stack
+										;			current player 							- in stack
+										;output: 	best WP awarded by the move when using the minimax algorithm - updated in stack in the stead of the local_max
+										
+					;| STACK: Board address, player, steps left, local_max or min, current player, pc (link reg)
+					
+			mov r0, -(sp)				;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 |
+			mov r1, -(sp)				;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 |
+			mov r2, -(sp)				;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 | r2 |
+			clr r0						;used for calculations
+			clr r1						;used for calculations
+			clr r2						;used for calculations
+			tst -(sp)					;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 | r2 | - |
+			mov 22(sp), -(sp)			;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 | r2 | - | #Board |
+										;preparation for movPiece function
+			mov r4, MovSrc				;
+			mov r5, MovDst				;preparation for the movpiece function
+			jsr r5, movPiece
+MovSrc:		.blkw 1
+MovDst:		.blkw 1
+			
+			mov 22(sp), -(sp)			;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 | r2 | - | #Board | #Player |
+			mov 22(sp), r1				;move steps into r1 to decrease, since we are going one level deeper in recursion
+			dec r1
+			mov r1, -(sp)				;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 | r2 | - | #Board | #Player | steps - 1 |
+			
+			mov r4, r0					;preperation for a check if move is a leap
+			sub r5, r0					;
+			bgt positive				;
+				neg r0					;absolute value |r0|
+		positive:
+			cmp r0, #SkipF				;comparing the distance jumped (r0) and farthest distance traversed in a one tile diagonal move (SkipFar)
+										;r0 > skipF only if a leap has occured
+			ble noLeap
+				mov r4, r2					;
+				add r5, r2					;
+				asr r2						;used to delete leapt over piece
+				mov #0, Board(r2)
+				
+		noLeap:
+				;if no leap occured can start recursion immidiately, otherwise, delete leapt over player and then start recursion
+			mov 20(sp), r1				;move curr_player to register
+			neg r1						;
+			add #3, r1					;used to change player for the next turn (maxRecursion)
+			mov r1, -(sp)				;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 | r2 | - | #Board | #Player | steps - 1 | adversary |
+			jsr pc, maxRecursion		;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 | r2 | local_max or min of son | #Board | #Player | - >
+										;- >	  | steps - 1 | adversary |
+			add #6, sp					;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 | r2 | local_max or min of son | #Board |
+			mov r4, -(sp)				;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 | r2 | local_max or min of son | #Board | r4 |
+										;preparation for minOrMax function, which returns its result in r4
+			mov 16(sp), -(sp)			;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 | r2 | local_max or min of son | #Board | r4 | curr_player |
+			mov 26(sp), -(sp)			;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 | r2 | local_max or min of son | #Board | r4 | curr_player | #Player |
+			jsr pc, minOrMax
+			add #4, sp					;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 | r2 | local_max or min of son | #Board | r4 |
+
+			tst r4						;if = 1, we want to find the maximum of the results gathered by a recursive call to maxRecursion
+			blt findMin
+				cmp 4(sp), 20(sp)			;r4 is indicating we are looking for a maximal value, if the local_max or min of tree's son is bigger than value -
+				blt reverse					; - in root (20(sp)), replace it and start undoing move				
+					mov 4(sp), 20(sp)			;| #Board | #Player | steps | local_max or min (updated) | curr_player | pc | r0 | r1 | r2 | local_max or min of son | #Board | r4 |
+					br reverse					
+		findMin:	
+		
+			cmp 4(sp), 20(sp)			;r4 is indicating we are looking for a minimal value, if local_max or min of tree's son is smaller than value in root (20(sp)) -
+			bgt reverse					; - replace it and start undoing move
+				mov 4(sp), 20(sp)				;| #Board | #Player | steps | local_max or min (updated) | curr_player | pc | r0 | r1 | r2 | local_max or min of son | #Board | r4 |
+			
+		reverse:
+		
+			mov (sp), r4				;move src pos back from stack into r4
+			add #6, sp					;| #Board | #Player | steps | local_max or min (updated) | curr_player | pc | r0 | r1 | r2 |
+			cmp r0, #SkipF				;comparing the distance jumped (r0, calculated earlier in code) and farthest distance traversed in a one tile -
+										; - diagonal move (SkipFar) r0 > skipF only if a leap has occured
+			ble noLeapReverse
+				mov 10(sp), r1				;r1 has the value of current player now
+				neg r1						;
+				add #3, r1					;using r1 to recreate the number of player whose piece was destroyed by being leapt over.
+				mov r1, Board(r2)			;r2 is the pointer to the tile where the leapt over piece was
+				
+		noLeapReverse:
+
+			mov r4, RvrsDst				;
+			mov r5, RvrsSrc				;preparation for the movpiece function to undo game move
+			jsr r5, movPiece
+				
+RvrsSrc:	.blkw 1
+RvrsDst:	.blkw 1
+
+			mov (sp)+, r2				;| #Board | #Player | steps | local_max or min (updated) | curr_player | pc | r0 | r1 |
+			mov (sp)+, r1				;| #Board | #Player | steps | local_max or min (updated) | curr_player | pc | r0 |
+			mov (sp)+, r0				;| #Board | #Player | steps | local_max or min (updated) | curr_player | pc |
+			rts pc
+				
