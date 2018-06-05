@@ -48,9 +48,9 @@ MovDst:		.blkw 1
 				;if no leap occured can start recursion immidiately, otherwise, delete leapt over player and then start recursion
 			mov 20(sp), r1				;move curr_player to register
 			neg r1						;
-			add #3, r1					;used to change player for the next turn (maxRecursion)
+			add #3, r1					;used to change player for the next turn (getWP_aux)
 			mov r1, -(sp)				;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 | r2 | - | #Board | #Player | steps - 1 | adversary |
-			jsr pc, maxRecursion		;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 | r2 | local_max or min of son | #Board | #Player | - >
+			jsr pc, getWP_aux			;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 | r2 | local_max or min of son | #Board | #Player | - >
 										;- >	  | steps - 1 | adversary |
 			add #6, sp					;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 | r2 | local_max or min of son | #Board |
 			mov r4, -(sp)				;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 | r2 | local_max or min of son | #Board | r4 |
@@ -60,7 +60,7 @@ MovDst:		.blkw 1
 			jsr pc, minOrMax
 			add #4, sp					;| #Board | #Player | steps | local_max or min | curr_player | pc | r0 | r1 | r2 | local_max or min of son | #Board | r4 |
 
-			tst r4						;if = 1, we want to find the maximum of the results gathered by a recursive call to maxRecursion
+			tst r4						;if = 1, we want to find the maximum of the results gathered by a recursive call to getWP_aux
 			blt findMin
 				cmp 4(sp), 20(sp)			;r4 is indicating we are looking for a maximal value, if the local_max or min of tree's son is bigger than value -
 				blt reverse					; - in root (20(sp)), replace it and start undoing move				
@@ -97,4 +97,3 @@ RvrsDst:	.blkw 1
 			mov (sp)+, r1				;| #Board | #Player | steps | local_max or min (updated) | curr_player | pc | r0 |
 			mov (sp)+, r0				;| #Board | #Player | steps | local_max or min (updated) | curr_player | pc |
 			rts pc
-				
